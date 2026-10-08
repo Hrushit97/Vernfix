@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+pytest
+pytest-asyncio
+mcp
+anthropic
+langgraph
+langchain
+langchain-anthropic
+langchain-core
+langchain-openai
+requests
+python-dotenv
