@@ -1,0 +1,23 @@
+{
+  "github_token": "ghp_YOUR_GITHUB_TOKEN_HERE",
+  "github_repo": "paymentpodAPI",
+  "github_owner": "your-github-username",
+  
+  "jira_url": "https://your-domain.atlassian.net",
+  "jira_username": "your-email@example.com",
+  "jira_api_token": "YOUR_JIRA_API_TOKEN_HERE",
+  "jira_project_key": "PAYMENT",
+  
+  "repo_path": "/path/to/local/repo",
+  "analyze_path": "/path/to/local/repo/src",
+  
+  "git_username": "Security Bot",
+  "git_email": "security-bot@example.com",
+  
+  "branch_naming": "security/vulnerability-fixes",
+  "auto_fix_enabled": true,
+  "create_jira_issues": true,
+  "create_pr_enabled": true,
+  
+  "logging_level": "INFO"
+}
