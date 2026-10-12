@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -22,6 +23,7 @@ public class ProductControllerTest {
     private MockMvc mockMvc;
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     public void testCreateProduct() throws Exception {
         String productJson = "{\"name\": \"Laptop\", \"price\": 999.99, \"quantity\": 5}";
 
@@ -36,10 +38,11 @@ public class ProductControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = {"ADMIN", "USER"})
     public void testGetProduct() throws Exception {
         String productJson = "{\"name\": \"Mouse\", \"price\": 29.99, \"quantity\": 50}";
 
-        // Create a product first
+        // Create a product first (using ADMIN role inherited from annotation)
         mockMvc.perform(post("/api/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(productJson))
@@ -53,6 +56,7 @@ public class ProductControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "USER")
     public void testGetProductNotFound() throws Exception {
         mockMvc.perform(get("/api/products/999"))
                 .andExpect(status().isNotFound());

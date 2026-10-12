@@ -126,40 +126,39 @@ class ProductControllerUnitTest {
     }
 
     @Test
-    @DisplayName("Should create product with null name")
-    void testCreateProductWithNullName() {
-        Product nullNameProduct = new Product(null, 99.99, 10);
-        when(productService.createProduct(nullNameProduct)).thenReturn(nullNameProduct);
+    @DisplayName("Should create product with minimum valid price")
+    void testCreateProductWithMinimumPrice() {
+        Product minPriceProduct = new Product("Budget Item", 0.01, 10);
+        when(productService.createProduct(minPriceProduct)).thenReturn(minPriceProduct);
 
-        ResponseEntity<Product> response = productController.createProduct(nullNameProduct);
+        ResponseEntity<Product> response = productController.createProduct(minPriceProduct);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertNull(response.getBody().getName());
+        assertEquals(0.01, response.getBody().getPrice());
     }
 
     @Test
-    @DisplayName("Should create product with zero price")
-    void testCreateProductWithZeroPrice() {
-        Product zeroPriceProduct = new Product("Free", 0.0, 100);
-        when(productService.createProduct(zeroPriceProduct)).thenReturn(zeroPriceProduct);
+    @DisplayName("Should create product with large price")
+    void testCreateProductWithLargePrice() {
+        Product largePriceProduct = new Product("Expensive", 999999.99, 1);
+        when(productService.createProduct(largePriceProduct)).thenReturn(largePriceProduct);
 
-        ResponseEntity<Product> response = productController.createProduct(zeroPriceProduct);
+        ResponseEntity<Product> response = productController.createProduct(largePriceProduct);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(0.0, response.getBody().getPrice());
+        assertEquals(999999.99, response.getBody().getPrice());
     }
 
     @Test
-    @DisplayName("Should create product with negative price")
-    void testCreateProductWithNegativePrice() {
-        Product negativePriceProduct = new Product("Discount", -50.0, 10);
-        when(productService.createProduct(negativePriceProduct))
-            .thenReturn(negativePriceProduct);
+    @DisplayName("Should create product with zero quantity")
+    void testCreateProductWithZeroQuantity() {
+        Product zeroQtyProduct = new Product("Out of Stock", 50.0, 0);
+        when(productService.createProduct(zeroQtyProduct)).thenReturn(zeroQtyProduct);
 
-        ResponseEntity<Product> response = productController.createProduct(negativePriceProduct);
+        ResponseEntity<Product> response = productController.createProduct(zeroQtyProduct);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals(-50.0, response.getBody().getPrice());
+        assertEquals(0, response.getBody().getQuantity());
     }
 
     @Test
