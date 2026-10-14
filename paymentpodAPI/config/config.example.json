@@ -1,0 +1,26 @@
+{
+  "github_token": "ghp_YOUR_GITHUB_TOKEN_HERE",
+  "github_repo": "Vernfix",
+  "github_owner": "Hrushit97",
+  
+  "jira_url": "https://your-domain.atlassian.net",
+  "jira_username": "your-email@example.com",
+  "jira_api_token": "YOUR_JIRA_API_TOKEN_HERE",
+  "jira_project_key": "PAYMENT",
+  
+  "repo_path": "https://github.com/Hrushit97/Vernfix",
+  "analyze_path": "https://github.com/Hrushit97/Vernfix/src",
+  "clone_url": "https://github.com/Hrushit97/Vernfix/tree/paymentAPI/pod-paymentApi",
+  "default_branch": "paymentAPI",
+  "description": "Vernevility fix",
+
+  "git_username": "Hrushit97",
+  "git_email": "Hrushit97@gmail.com",
+  
+  "branch_naming": "security/vulnerability-fixes",
+  "auto_fix_enabled": true,
+  "create_jira_issues": true,
+  "create_pr_enabled": true,
+  
+  "logging_level": "INFO"
+}
