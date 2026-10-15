@@ -107,3 +107,94 @@ class JiraSkill:
         except Exception as e:
             logger.error(f"Failed to transition issue: {e}")
             return {"success": False, "error": str(e)}
+
+    def search_issues(self, project_key: str, summary_keyword: str = None, status: str = None) -> Dict:
+        """Search for existing Jira issues in a project"""
+        try:
+            jql_parts = [f"project = {project_key}"]
+
+            if summary_keyword:
+                jql_parts.append(f'summary ~ "{summary_keyword}"')
+
+            if status:
+                jql_parts.append(f'status = "{status}"')
+
+            jql = " AND ".join(jql_parts)
+            logger.info(f"Searching with JQL: {jql}")
+
+            issues = self.jira.search_issues(jql, maxResults=50)
+            issues_list = []
+            for issue in issues:
+                issues_list.append({
+                    "key": issue.key,
+                    "summary": issue.fields.summary,
+                    "status": str(issue.fields.status),
+                    "priority": str(issue.fields.priority),
+                    "description": issue.fields.description,
+                })
+
+            logger.info(f"Found {len(issues_list)} existing issues")
+            return {
+                "success": True,
+                "count": len(issues_list),
+                "issues": issues_list
+            }
+        except Exception as e:
+            logger.error(f"Failed to search issues: {e}")
+            return {"success": False, "error": str(e), "issues": []}
+
+    def find_duplicate_issues(self, project_key: str, file_path: str, vuln_type: str) -> Dict:
+        """Find duplicate/existing issues for a specific vulnerability"""
+        try:
+            # Search for issues related to file and vulnerability type
+            jql = f'project = {project_key} AND description ~ "{file_path}" AND summary ~ "{vuln_type}"'
+            logger.info(f"Searching for duplicates with JQL: {jql}")
+
+            issues = self.jira.search_issues(jql, maxResults=10)
+            duplicates = []
+
+            for issue in issues:
+                duplicates.append({
+                    "key": issue.key,
+                    "summary": issue.fields.summary,
+                    "status": str(issue.fields.status),
+                    "priority": str(issue.fields.priority),
+                    "url": f"{self.jira.client_info.url}/browse/{issue.key}",
+                })
+
+            return {
+                "success": True,
+                "found_duplicates": len(duplicates) > 0,
+                "duplicate_count": len(duplicates),
+                "duplicates": duplicates
+            }
+        except Exception as e:
+            logger.error(f"Failed to find duplicates: {e}")
+            return {"success": False, "error": str(e), "duplicates": []}
+
+    def get_issues_by_labels(self, project_key: str, labels: List[str]) -> Dict:
+        """Get issues by labels (e.g., 'security', 'automated-fix')"""
+        try:
+            label_query = " OR ".join([f'labels in ({label})' for label in labels])
+            jql = f"project = {project_key} AND ({label_query})"
+            logger.info(f"Searching issues with labels: {labels}")
+
+            issues = self.jira.search_issues(jql, maxResults=100)
+            issues_list = []
+
+            for issue in issues:
+                issues_list.append({
+                    "key": issue.key,
+                    "summary": issue.fields.summary,
+                    "status": str(issue.fields.status),
+                    "labels": issue.fields.labels,
+                })
+
+            return {
+                "success": True,
+                "count": len(issues_list),
+                "issues": issues_list
+            }
+        except Exception as e:
+            logger.error(f"Failed to get issues by labels: {e}")
+            return {"success": False, "error": str(e), "issues": []}
