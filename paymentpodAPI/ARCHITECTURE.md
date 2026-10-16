@@ -8,6 +8,7 @@ Key properties:
 - **Hybrid detection**: built-in regex analysis plus optional SonarQube/SonarCloud findings.
 - **Jira de-duplication**: existing Jira tickets are reused instead of creating duplicates.
 - **Human-in-the-loop**: each fix needs human approval before it is applied (on by default).
+- **MCP server**: the Jira and GitHub skills are also exposed as tools to AI clients (see "MCP Server" below).
 
 ## Component Architecture
 
@@ -115,6 +116,30 @@ Findings from Sonar are reported as `Sonar <rule>`. The fixer does not know thes
 - Quality gate status (`/api/qualitygates/project_status`); available but not yet called by the workflow
 - Branch and pull-request filters
 - Token authentication; the Sonar MCP server exposes the same data, but the orchestrator calls the Web API directly
+
+## MCP Server (Jira, GitHub and Sonar)
+
+`mcp_server/` lets an MCP client (for example Claude Desktop) call the Jira, GitHub and Sonar skills as tools. Per-system details: `mcp_server/MCP_JIRA.md`, `mcp_server/MCP_GITHUB.md`, `mcp_server/MCP_SONAR.md`. It uses `mcp` 2.x (`mcp.server.mcpserver.MCPServer`; the old `FastMCP` import no longer exists). The folder is named `mcp_server` so it does not shadow the installed `mcp` package.
+
+| File | Role |
+|------|------|
+| `server.py` | Creates the server, registers tools and resources, builds the skills from environment variables on first use, runs over stdio |
+| `tool_handlers.py` | Plain functions that validate input and call the skills; testable without the MCP SDK |
+| `resource_handlers.py` | Data for the two resources |
+
+**Tools**
+- Jira: `create_jira_issue`, `search_jira_issues`, `find_duplicate_jira_issues`, `get_existing_security_issues`, `get_jira_issue`, `link_pr_to_issue`
+- GitHub: `get_github_repository`, `create_github_pr`
+- Sonar (all read-only, optional `branch` / `pull_request`): `get_sonar_vulnerabilities`, `get_sonar_hotspots`, `get_sonar_quality_gate`, `get_sonar_findings`
+
+**Resources**: `codebase://config` (which environment variables are set, never their values) and `codebase://tools` (tool list).
+
+**Safety rules**
+- Write tools (`create_jira_issue`, `link_pr_to_issue`, `create_github_pr`) refuse to run unless `confirm=true`, so a human must approve first.
+- Project keys, issue keys, repository names and branch names are checked against patterns; PR links must start with `https://github.com/`.
+- Errors returned to the client are generic; details go to the server log (stderr).
+
+Run with `python -m mcp_server.server`. It uses the same Jira and GitHub environment variables as the orchestrator. The MCP server does not yet expose analysis, fixing or workflow status.
 
 ## Extension Points
 
