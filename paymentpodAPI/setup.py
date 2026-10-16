@@ -24,19 +24,25 @@ setup(
     ],
 #dependency management
 
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=[
         "PyGithub==2.1.1",
         "jira==3.10.5",
         "requests==2.31.0",
         "python-dotenv==1.0.0",
-        "coverage==7.16.2",
-        "pytest==9.1.1",
-        "pytest-cov==7.1.0",
+        "mcp>=2.3.0,<3",
     ],
+    extras_require={
+        "dev": [
+            "coverage==7.16.2",
+            "pytest==9.1.1",
+            "pytest-cov==7.1.0",
+        ],
+    },
     entry_points={
         "console_scripts": [
             "vulnerability-orchestrator=main:main",
+            "mcp-server=mcp_server.server:run_server",
         ],
     },
 )

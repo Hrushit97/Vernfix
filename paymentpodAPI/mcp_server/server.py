@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from mcp.server.mcpserver import MCPServer
 
 from mcp_server import tool_handlers as th
+from mcp_server import code_handlers as ch
 from mcp_server import resource_handlers as rh
 
 # stdio transport uses stdout for protocol messages: log to stderr only
@@ -29,6 +30,14 @@ class Services:
         self._jira = None
         self._github = None
         self._sonar = None
+        # Code analysis/fixing is local; all file access is limited to repo_root
+        self.repo_root = os.path.realpath(os.getenv('REPO_PATH') or os.getcwd())
+        self.last_analysis = None
+        self.fix_log = []
+        from skills.code_analysis_skill import CodeAnalysisSkill
+        from skills.vulnerability_fixer_skill import VulnerabilityFixerSkill
+        self.analyzer = CodeAnalysisSkill()
+        self.fixer = VulnerabilityFixerSkill()
 
     @property
     def sonar(self):
@@ -135,6 +144,41 @@ def create_server(services=None) -> MCPServer:
                            pull_request: Optional[str] = None) -> Dict:
         """Vulnerabilities and hotspots together, in the orchestrator's format (read-only)."""
         return th.get_sonar_findings(services, branch, pull_request)
+
+    @server.tool()
+    def analyze_code(path: str = ".", file_type: str = "all") -> Dict:
+        """Scan a directory inside the repo for vulnerabilities (file_type: python, javascript, all)."""
+        return ch.analyze_code(services, path, file_type)
+
+    @server.tool()
+    def get_vulnerabilities(filter: str = "all", limit: int = 50) -> Dict:
+        """List vulnerabilities from the last analyze_code run (filter: all, critical, high, medium, low)."""
+        return ch.get_vulnerabilities(services, filter, limit)
+
+    @server.tool()
+    def fix_vulnerability(file: str, line: int, vuln_type: str, confirm: bool = False) -> Dict:
+        """Apply the automatic fix to a file in the repo. Modifies the file. Requires confirm=true."""
+        return ch.fix_vulnerability(services, file, line, vuln_type, confirm)
+
+    @server.tool()
+    def get_workflow_status() -> Dict:
+        """Summary of the last analysis and the fixes applied in this session."""
+        return ch.get_workflow_status(services)
+
+    @server.resource("codebase://overview")
+    def overview_resource() -> Dict:
+        """Project name, skills, tool count and source file count."""
+        return rh.get_overview(services)
+
+    @server.resource("codebase://skills")
+    def skills_resource() -> Dict:
+        """Skills and their methods."""
+        return rh.get_skills_overview()
+
+    @server.resource("codebase://vulnerabilities")
+    def vulnerabilities_resource() -> Dict:
+        """Vulnerability counts from the last analyze_code run."""
+        return rh.get_vulnerability_status(services)
 
     @server.resource("codebase://config")
     def config_resource() -> Dict:

@@ -166,5 +166,5 @@ Never commit tokens; keep them in environment variables or a secret store.
 
 - Graceful degradation on API failures
 - Comprehensive logging
-- Transaction rollback on critical errors
+- Failed fixes are recorded and skipped; the orchestrator does not roll back file changes
 - Detailed error reporting
