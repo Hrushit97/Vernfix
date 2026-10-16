@@ -33,6 +33,10 @@ def load_config() -> dict:
         'analyze_path': os.getenv('ANALYZE_PATH'),
         'git_username': os.getenv('GIT_USERNAME', 'Security Bot'),
         'git_email': os.getenv('GIT_EMAIL', 'security-bot@example.com'),
+        # Optional Sonar integration (all three needed to enable it)
+        'sonar_url': os.getenv('SONAR_URL'),
+        'sonar_token': os.getenv('SONAR_TOKEN'),
+        'sonar_project_key': os.getenv('SONAR_PROJECT_KEY'),
     }
 
 

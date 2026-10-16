@@ -56,7 +56,7 @@ class TestVulnerabilityOrchestrator(unittest.TestCase):
                     with patch('orchestrator.vulnerability_orchestrator.VulnerabilityFixerSkill'):
                         with patch('orchestrator.vulnerability_orchestrator.PRManagementSkill'):
                             orchestrator = VulnerabilityOrchestrator(self.config)
-                            
+
                             self.assertEqual(
                                 orchestrator._get_jira_priority('CRITICAL'),
                                 'Highest'
@@ -88,7 +88,7 @@ class TestVulnerabilityOrchestrator(unittest.TestCase):
                         with patch('orchestrator.vulnerability_orchestrator.PRManagementSkill'):
                             orchestrator = VulnerabilityOrchestrator(self.config)
                             status = orchestrator.get_workflow_status()
-                            
+
                             self.assertEqual(status['status'], 'initialized')
                             self.assertTrue(all(status['skills_ready'].values()))
                             self.assertIn('config', status)
@@ -156,6 +156,62 @@ class TestVulnerabilityOrchestrator(unittest.TestCase):
                             self.assertTrue(result['success'])
                             self.assertEqual(result['count'], 1)
                             self.assertEqual(len(result['issues']), 1)
+
+    def _make_orchestrator(self):
+        with patch('orchestrator.vulnerability_orchestrator.GitHubSkill'), \
+             patch('orchestrator.vulnerability_orchestrator.JiraSkill'), \
+             patch('orchestrator.vulnerability_orchestrator.CodeAnalysisSkill'), \
+             patch('orchestrator.vulnerability_orchestrator.VulnerabilityFixerSkill'), \
+             patch('orchestrator.vulnerability_orchestrator.PRManagementSkill'):
+            orch = VulnerabilityOrchestrator(self.config)
+        orch.fixer_skill.fix_vulnerability = Mock(return_value={'success': True})
+        return orch
+
+    def test_fix_requires_human_approval(self):
+        """Only approved vulnerabilities are fixed; rejected ones are skipped"""
+        orch = self._make_orchestrator()
+        vulns = [{'type': 'A', 'file': 'a.py'}, {'type': 'B', 'file': 'b.py'}]
+        answers = iter(['yes', 'no'])
+        fixed, failed = orch._step_fix_vulnerabilities(
+            vulns, True, lambda v, i, n: next(answers))
+        self.assertEqual(fixed, [vulns[0]])
+        self.assertEqual(failed, [])
+        self.assertEqual(orch.workflow_status['skipped_fixes'], [vulns[1]])
+        orch.fixer_skill.fix_vulnerability.assert_called_once()
+
+    def test_sonar_findings_merged_without_duplicates(self):
+        """Sonar findings are added; same file+line as local findings is skipped"""
+        orch = self._make_orchestrator()
+        orch.sonar_skill = Mock()
+        orch.sonar_skill.get_all_findings.return_value = {
+            'success': True, 'count': 2, 'vulnerabilities': [
+                {'file': 'a.py', 'line': 1, 'type': 'Sonar x'},
+                {'file': 'c.py', 'line': 9, 'type': 'Sonar y'}]}
+        local = [{'file': 'a.py', 'line': 1, 'type': 'SQL Injection'}]
+        merged = orch._merge_sonar_findings(local)
+        self.assertEqual([v['file'] for v in merged], ['a.py', 'c.py'])
+
+    def test_sonar_failure_falls_back_to_local(self):
+        orch = self._make_orchestrator()
+        orch.sonar_skill = Mock()
+        orch.sonar_skill.get_all_findings.return_value = {'success': False, 'error': 'down'}
+        local = [{'file': 'a.py', 'line': 1}]
+        self.assertEqual(orch._merge_sonar_findings(local), local)
+
+    def test_fix_quit_and_all(self):
+        """'quit' skips the rest; 'all' approves the rest without asking again"""
+        orch = self._make_orchestrator()
+        vulns = [{'type': 'A', 'file': 'a'}, {'type': 'B', 'file': 'b'}]
+        fixed, _ = orch._step_fix_vulnerabilities(vulns, True, lambda v, i, n: 'quit')
+        self.assertEqual(fixed, [])
+        calls = []
+        def cb(v, i, n):
+            calls.append(i)
+            return 'all'
+        fixed, _ = orch._step_fix_vulnerabilities(vulns, True, cb)
+        self.assertEqual(len(fixed), 2)
+        self.assertEqual(calls, [1])
+
 
 
 if __name__ == '__main__':

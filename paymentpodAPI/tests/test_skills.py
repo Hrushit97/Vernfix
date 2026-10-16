@@ -93,5 +93,44 @@ class TestVulnerabilityFixerSkill(unittest.TestCase):
         self.assertTrue(result['success'])
 
 
+class TestSonarSkill(unittest.TestCase):
+    """Test Sonar findings retrieval with mocked HTTP"""
+
+    def setUp(self):
+        from skills.sonar_skill import SonarSkill
+        self.skill = SonarSkill('https://sonar.test', 'tok', 'proj', repo_path='/repo')
+
+    def test_get_all_findings_normalised(self):
+        def fake_get(path, params):
+            if path == '/api/issues/search':
+                return {'issues': [{'key': 'I1', 'component': 'proj:src/a.py', 'line': 3,
+                                    'rule': 'python:S2077', 'message': 'SQL', 'severity': 'BLOCKER'}],
+                        'paging': {'total': 1}}
+            return {'hotspots': [{'key': 'H1', 'component': 'proj:src/b.py', 'line': 7,
+                                  'ruleKey': 'python:S4426', 'message': 'Crypto',
+                                  'vulnerabilityProbability': 'HIGH'}],
+                    'paging': {'total': 1}}
+        self.skill._get = fake_get
+        result = self.skill.get_all_findings()
+        self.assertTrue(result['success'])
+        self.assertEqual(result['count'], 2)
+        self.assertEqual(result['vulnerabilities'][0]['severity'], 'CRITICAL')
+        self.assertEqual(result['vulnerabilities'][1]['sonar_kind'], 'hotspot')
+        self.assertTrue(result['vulnerabilities'][0]['file'].endswith('a.py'))
+
+    def test_pagination(self):
+        pages = {1: {'issues': [{}] * 500, 'paging': {'total': 501}},
+                 2: {'issues': [{}], 'paging': {'total': 501}}}
+        self.skill._get = lambda path, params: pages[params['p']]
+        self.assertEqual(len(self.skill._paginate('/x', {}, 'issues')), 501)
+
+    def test_failure_returns_error(self):
+        def boom(path, params):
+            raise RuntimeError('401')
+        self.skill._get = boom
+        result = self.skill.get_all_findings()
+        self.assertFalse(result['success'])
+
+
 if __name__ == '__main__':
     unittest.main()
